@@ -1,5 +1,6 @@
-import { Elysia, t } from 'elysia';
+import { Elysia } from 'elysia';
 import { db, users } from './db';
+import { usersRoute } from './routes/users-route';
 
 const app = new Elysia()
   .get('/', () => ({ 
@@ -18,26 +19,7 @@ const app = new Elysia()
       };
     }
   })
-  .post('/users', async ({ body }) => {
-    try {
-      await db.insert(users).values({
-        name: body.name,
-        email: body.email,
-      });
-      return { success: true, message: 'User berhasil dibuat!' };
-    } catch (error: any) {
-      return { 
-        success: false, 
-        error: 'Gagal membuat user.',
-        details: error.message 
-      };
-    }
-  }, {
-    body: t.Object({
-      name: t.String(),
-      email: t.String({ format: 'email' }),
-    })
-  })
+  .use(usersRoute)
   .listen(process.env.PORT || 3000);
 
 console.log(`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
