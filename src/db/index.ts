@@ -2,9 +2,13 @@ import { drizzle } from 'drizzle-orm/mysql2';
 import mysql from 'mysql2/promise';
 import * as schema from './schema';
 
-const databaseUrl = process.env.DATABASE_URL || 'mysql://root:rootpassword@127.0.0.1:3306/vibedb';
-
-const poolConnection = mysql.createPool(databaseUrl);
+const poolConnection = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'rootpassword',
+  database: process.env.DB_NAME || 'vibedb',
+  port: Number(process.env.DB_PORT) || 3306,
+});
 
 export const db = drizzle(poolConnection, { schema, mode: 'default' });
 export * from './schema';
