@@ -45,4 +45,25 @@ export const usersRoute = new Elysia({ prefix: '/api' })
       email: t.String({ format: 'email' }),
       password: t.String({ minLength: 6 }),
     })
+  })
+  .get('/users/current', async ({ headers, set }) => {
+    try {
+      const authorization = headers.authorization;
+      if (!authorization || !authorization.startsWith('Bearer ')) {
+        set.status = 401;
+        return { error: 'Unauthorized' };
+      }
+
+      const token = authorization.substring(7);
+      const user = await UsersService.getCurrentUser(token);
+      return { data: user };
+    } catch (error: any) {
+      if (error.message === 'Unauthorized') {
+        set.status = 401;
+        return { error: 'Unauthorized' };
+      }
+
+      set.status = 500;
+      return { error: 'Terjadi kesalahan pada server', details: error.message };
+    }
   });

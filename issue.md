@@ -1,7 +1,7 @@
-# Issue: Implementasi Fitur Login User & Manajemen Sesi
+# Issue: Implementasi API Get Current User
 
 ## Deskripsi
-Implementasikan fitur login user dan pembuatan sesi menggunakan **ElysiaJS**, **Drizzle ORM** (dengan MySQL), dan **Bun**. Fitur ini merupakan kelanjutan dari sistem registrasi sebelumnya, dengan struktur kode modular yang terbagi dalam layer Routing (`routes`) dan Business Logic (`services`).
+Implementasikan fitur untuk mengambil data profil user yang sedang login (terautentikasi) menggunakan **ElysiaJS**, **Drizzle ORM**, dan **Bun**. Endpoint ini akan memvalidasi token yang dikirimkan melalui header `Authorization: Bearer <token>` terhadap tabel `sessions`, lalu mengambil data dari tabel `users`.
 
 ---
 
@@ -9,13 +9,10 @@ Implementasikan fitur login user dan pembuatan sesi menggunakan **ElysiaJS**, **
 Gunakan struktur modular yang sudah ada:
 ```text
 src/
-├── db/
-│   ├── index.ts
-│   └── schema.ts            <-- Modifikasi (Tambahkan tabel sessions)
 ├── routes/
-│   └── users-route.ts       <-- Modifikasi (Tambahkan route POST /login)
+│   └── users-route.ts       <-- Modifikasi (Tambahkan route GET /current)
 ├── services/
-│   └── users-service.ts     <-- Modifikasi (Tambahkan fungsi login)
+│   └── users-service.ts     <-- Modifikasi (Tambahkan fungsi getCurrentUser)
 └── index.ts
 ```
 
@@ -23,42 +20,64 @@ src/
 
 ## 📋 Detail Spesifikasi
 
-### 1. Skema Database (`sessions` table)
-Tambahkan tabel `sessions` pada file `src/db/schema.ts` dengan struktur berikut:
-- **`id`**: `serial` (integer auto increment, Primary Key)
-- **`token`**: `varchar(255)` (not null, berisi UUID untuk otentikasi user)
-- **`user_id`**: `int` (Foreign Key mengarah ke kolom `id` di tabel `users`)
-- **`created_at`**: `timestamp` (default `current_timestamp` / `defaultNow()`)
-
-### 2. API Endpoint Login
-- **Method**: `POST`
-- **Path**: `/api/users/login`
-- **Request Body**:
-  ```json
-  {
-     "name": "Beju",
-     "email": "bejukuda@gmail.com",
-     "password": "BEJUKUDA"
-  }
-  ```
-  *(Catatan: Meskipun umumnya login hanya butuh email & password, tetap ikuti kontrak payload dari frontend di atas jika diminta)*
+### 1. API Endpoint Get Current User
+- **Method**: `GET`
+- **Path**: `/api/users/current`
+- **Headers**:
+  - `Authorization: Bearer <token>` *(Catatan: Token dicocokkan dengan yang ada di tabel `sessions`, yang bereferensi ke `users` via `user_id`)*
 - **Response Sukses (HTTP 200)**:
   ```json
-  {
-     "data": "a3b8...-uuid-token"
+  { 
+    "data": {Buatkan issue.md yang berisi perencanan untuk nanti di implementasikan oleh junior proggramer atau ai model yang lebih murah isi dari perencanaan nya sebagai berikut: 
+
+ buatkan API untuk get users saat ini yang sedang login
+
+ Endpoint : GET /api/users/current
+
+Headers :
+Autorization: Bearer <token> (token adalah yang ada di table users)
+
+
+ Response Body (Success);
+ { 
+    "data" : {
+       "id" : 1,
+       "name" : "Beju",
+       "email" : "[Bejukuda@gmail.com]",
+       "created_at" : "2022-01-01 00:00:00"
+    } 
+ }
+
+ Response Body (Error) ;
+ {
+    "error" : "Unauthorized"
+ }
+
+Srruktur Folder di dalam src 
+_roustes ; ini berisi routing elysia js
+ - service ; ini berisi logic bisnis aplikasi
+ 
+ Strurktur file
+ - routes : menggunakan format misal users-route.ts
+ - service : menggunakan format misal users-service.ts
+ Jelaskan tahapan-tahapan yang harus di lakukan untuk mengimplementasikan adalah junior proggramer atau model AI yang lebih murah
+       "id": 1,
+       "name": "Beju",
+       "email": "bejukuda@gmail.com",
+       "created_at": "2022-01-01 00:00:00"
+    } 
   }
   ```
-- **Response Error (HTTP 401 / 400)**:
+- **Response Error (HTTP 401)**:
   ```json
   {
-     "error": "Email atau password salah"
+    "error": "Unauthorized"
   }
   ```
 
 ---
 
 ## 🗺️ Alur Data (Flowchart)
-Berikut adalah visualisasi alur login dari request hingga respons:
 
 ```mermaid
 sequenceDiagram
@@ -67,26 +86,22 @@ sequenceDiagram
     participant Service as users-service.ts
     participant DB as MySQL Database
 
-    Client->>Router: POST /api/users/login (name, email, password)
-    Note over Router: Validasi struktur input
-    Router->>Service: login(email, password)
+    Client->>Router: GET /api/users/current (Header: Authorization)
+    Note over Router: Ekstrak token dari string "Bearer <token>"
     
-    Service->>DB: Cari user berdasarkan email
-    DB-->>Service: Kembalikan data user
-    
-    alt User Tidak Ditemukan
-        Service-->>Router: Error("Email atau password salah")
-    else User Ditemukan
-        Note over Service: Verifikasi password (Bun.password.verify)
-        alt Password Salah
-            Service-->>Router: Error("Email atau password salah")
-            Router-->>Client: HTTP 401 {"error": "Email atau password salah"}
-        else Password Benar
-            Note over Service: Generate UUID (crypto.randomUUID)
-            Service->>DB: Insert sesi baru ke tabel sessions (token, user_id)
-            DB-->>Service: Sukses Insert
-            Service-->>Router: Kembalikan Token
-            Router-->>Client: HTTP 200 {"data": "Token"}
+    alt Token Tidak Ada / Format Salah
+        Router-->>Client: HTTP 401 {"error": "Unauthorized"}
+    else Token Tersedia
+        Router->>Service: getCurrentUser(token)
+        Service->>DB: Cari token di tabel 'sessions' & join tabel 'users'
+        DB-->>Service: Kembalikan data
+        
+        alt Token Tidak Valid / Expired
+            Service-->>Router: Error("Unauthorized")
+            Router-->>Client: HTTP 401 {"error": "Unauthorized"}
+        else Token Valid
+            Service-->>Router: Kembalikan objek user (id, name, email, created_at)
+            Router-->>Client: HTTP 200 {"data": {...}}
         end
     end
 ```
@@ -95,59 +110,49 @@ sequenceDiagram
 
 ## 🛠️ Tahapan Implementasi (Step-by-Step) untuk Junior / AI
 
-### Langkah 1: Update Skema Database
-1. Buka file `src/db/schema.ts`.
-2. Impor `int` (jika menggunakan MySQL) dari `drizzle-orm/mysql-core`.
-3. Definisikan tabel baru `sessions`:
-   ```typescript
-   export const sessions = mysqlTable('sessions', {
-     id: serial('id').primaryKey(),
-     token: varchar('token', { length: 255 }).notNull(),
-     userId: int('user_id').references(() => users.id).notNull(),
-     createdAt: timestamp('created_at').defaultNow(),
-   });
-   ```
-
-### Langkah 2: Buat & Jalankan Migrasi Database
-1. Buka terminal dan jalankan perintah generate migrasi:
-   ```bash
-   bun db:generate
-   ```
-2. Jalankan perintah migrasi untuk memperbarui database:
-   ```bash
-   bun db:migrate
-   ```
-
-### Langkah 3: Modifikasi Service Layer (`src/services/users-service.ts`)
+### Langkah 1: Modifikasi Service Layer (`src/services/users-service.ts`)
 1. Buka file `src/services/users-service.ts`.
-2. Tambahkan metode statis baru `login(email: string, password: string)`.
-3. Gunakan Drizzle untuk mencari user: `db.select().from(users).where(eq(users.email, email)).limit(1)`.
-4. Jika array kosong (user tidak ada), lempar error: `new Error('Email atau password salah')`.
-5. Jika ada, verifikasi password menggunakan **Bun native hashing**: 
-   `const isMatch = await Bun.password.verify(password, user.password);`
-6. Jika `!isMatch`, lempar error yang sama: `new Error('Email atau password salah')`.
-7. Jika benar, buat token UUID dengan fungsi bawaan JS: `const token = crypto.randomUUID();`
-8. Insert token tersebut ke tabel `sessions`: `await db.insert(sessions).values({ token, userId: user.id });`
-9. Return token.
+2. Tambahkan metode statis baru `getCurrentUser(token: string)`.
+3. Gunakan Drizzle untuk melakukan *inner join* antara tabel `sessions` dan tabel `users` berdasarkan `token`:
+   ```typescript
+   const [result] = await db
+     .select({
+       id: users.id,
+       name: users.name,
+       email: users.email,
+       created_at: users.createdAt
+     })
+     .from(sessions)
+     .innerJoin(users, eq(sessions.userId, users.id))
+     .where(eq(sessions.token, token))
+     .limit(1);
+   ```
+4. Periksa apakah `result` ditemukan.
+   - Jika `!result`, lemparkan error: `new Error('Unauthorized')`.
+   - Jika ditemukan, kembalikan objek `result` tersebut.
 
-### Langkah 4: Modifikasi Route Layer (`src/routes/users-route.ts`)
+### Langkah 2: Modifikasi Route Layer (`src/routes/users-route.ts`)
 1. Buka file `src/routes/users-route.ts`.
-2. Di dalam instance Elysia yang sudah ada, tambahkan rute `post('/login', ...)` (path jadinya `/api/users/login`).
-3. Buat schema validasi body menggunakan `t.Object` untuk menerima `name`, `email`, dan `password` sesuai kontrak.
-4. Di dalam handler, panggil `UsersService.login(body.email, body.password)`.
-5. Bungkus dalam `try-catch`. 
-   - Jika catch error `Email atau password salah`, return status `401` dengan JSON `{ "error": "Email atau password salah" }`.
-   - Jika berhasil, return JSON `{ "data": token }`.
+2. Di dalam instance Elysia `usersRoute`, tambahkan rute `.get('/current', ...)` (yang akan menjadi `/api/users/current`).
+3. Di parameter handler, akses `headers` dan `set` objek dari Elysia: `async ({ headers, set }) => { ... }`.
+4. Ekstrak header `authorization`. Lakukan validasi dasar:
+   - Jika header kosong atau tidak diawali dengan `"Bearer "`, tangani dengan:
+     ```typescript
+     set.status = 401;
+     return { error: 'Unauthorized' };
+     ```
+   - Jika ada, pisahkan string tersebut untuk mendapatkan token mentah:
+     ```typescript
+     const token = headers.authorization.split(' ')[1];
+     ```
+5. Bungkus pemanggilan `UsersService.getCurrentUser(token)` di dalam `try-catch`.
+   - Jika catch menangkap pesan `'Unauthorized'`, set status ke `401` dan return `{ error: "Unauthorized" }`.
+   - Jika sukses, return data: `{ data: user }`.
 
-### Langkah 5: Pengujian
-Gunakan cURL atau HTTP Client:
+### Langkah 3: Pengujian
+Uji endpoint dengan token yang didapat dari API login sebelumnya:
 ```bash
-curl -X POST http://localhost:3000/api/users/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Beju",
-    "email": "bejukuda@gmail.com",
-    "password": "BEJUKUDA"
-  }'
+curl -X GET http://localhost:3000/api/users/current \
+  -H "Authorization: Bearer <GANTI_DENGAN_TOKEN_ANDA>"
 ```
-Pastikan merespons token yang valid dan sukses tersimpan di database.
+Pastikan merespons dengan data user ketika token benar, dan merespons dengan pesan `Unauthorized` saat token salah.
